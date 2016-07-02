@@ -52,13 +52,15 @@ def perm(universo, longitud, comienzo=False):
 	exec code
 	return yield_perm()
 
-#universo=n;longitud=r
-def peso(n,r):
-	espacios_vacios=0
-	cont=0
-	for x in n: cont+=1
-	cant_comb=cont^r
+
+def peso(n,r):#usando permutacion con repeticion
+	espacios=0;cont=0
+	for x in n:
+		cont=cont+1
+	cantidad=cont**r
 	bit=r*8
-	for x in range(1,cant_comb): espacios_vacios+=16 #si son espacios vacios es mas 8 si son saltar linea es mas 16
-	peso=(cant_comb*bit)+espacios_vacios
-	print "peso en bit-->",peso
+	peso=cantidad*bit
+	for x in xrange(1,cantidad):#contando el ultimo salto
+		espacios=espacios+16
+	peso=peso+espacios
+	print "peso -->",peso,"bit"
