@@ -1,4 +1,4 @@
-from halfHandshake import hmac4times
+from cracker import hmac4times
 
 
 def isWPAPass(passPhrase, ssid, clientMac, APMac, Anonce, Snonce, mic, data):
@@ -9,49 +9,52 @@ def isWPAPass(passPhrase, ssid, clientMac, APMac, Anonce, Snonce, mic, data):
         calculatedMic = hmac.new(ptk[0:16],data,sha1).digest()[0:16]
     else:
         calculatedMic = hmac.new(ptk[0:16],data).digest()
-    return mic == calculatedMic:
+    return mic == calculatedMic
 
-def perm(universo, longitud, comienzo=False):
+def perm(universo, longitud, inicio=False, fin=False):
 	""" 
 	Calcula permutaciones.
 	universo = lista de caracteres que compondra las combinaciones.
 	longitud = longitud que tendra cada permutacion.
-	comienzo = permutacion desde la cual iniciar a calcular permutaciones.
+	inicio = lista de posiciones desde la cual comenzara a iterar cada caracter. Sirve para especificar la permutacion desde la cual debe iniciar a calcular permutaciones.
 	"""
-	#inicializa numero de tabulaciones
+	lis = universo
 	nt = 2
-	continuee = False
-	if comienzo:
-		last = comienzo
-		indexes = [lis.index(x) - 1 for x in last]
-		indexes[-1] += 2
-		continuee = True
+	n = n2 = longitud
+	if inicio:
+		inicio = list(inicio)
+		indexes = [x - 1 for x in inicio]
+	if fin:
+		fin = list(fin)
 	code = """def yield_perm():
 	try:
 		lis = '%s'
 		n = n2 = %s
-		continuee = %s
+		inicio = %s
+		fin = %s
 		indexes = %s
-"""	% (universo, longitud, str(continuee), str(indexes if continuee else []))
+"""	% (universo, longitud, str(inicio), str(fin), str(indexes if inicio else []))
 	c = -1
 	while n > 0:
 		c += 1
 		i = -1
-		code += ("\t" * nt) + "if continuee:\n" + ("\t" * (nt + 1)) + "c{0} = indexes[{0}]; indexes[{0}] = -1\n".format(c)
+		code += ("\t" * nt) + "if inicio:\n" + ("\t" * (nt + 1)) + "c{0} = indexes[{0}]; indexes[{0}] = -1\n".format(c)
 		code += ("\t" * nt) + "else:\n" + ("\t" * (nt + 1)) + "c%d = -1\n" % (c)
-		# code += ("\t" * nt) + "c%d = -1\n" % (c)
 		code += ("\t" * nt) + ("while c%d < len(lis) - 1:\n" % c)
 		nt += 1
 		code += ("\t" * nt) + "c%d += 1\n" % c
 		code += ('\t' * nt) + "d{0} = lis[c{0}]\n".format(c)
 		n -= 1
-	code += ('\t' * nt) + "comb = " + ("d%d + " * n2) % tuple(range(n2)) + "'\\n'\n"
+	code += ('\t' * nt) + "comb = " + (("d%d + " * n2) % tuple(range(n2)))[:-2]  + "\n"
 	code += ('\t' * nt) + "yield comb\n"
-	code += """	except KeyboardInterrupt:
-			pass"""
+	contadores = (("c%d , " * n2) % tuple(range(n2)))[:-2]
+	code += ('\t' * nt) + "if [" + contadores + "] == fin:\n"
+	code += ('\t' * (nt + 1)) + "indexes = [" + (str(longitud) + ', ') * longitud  + "]\n"
+	code += ('\t' * (nt + 1)) + "%s = indexes; break\n" % contadores
+	code += ('\t' * (nt + 1)) + "break\n"
+	code += """	except KeyboardInterrupt:\n\t\t\tpass"""
 	exec code
 	return yield_perm()
-
 
 def peso(n,r):#usando permutacion con repeticion
 	espacios=0;cont=0
