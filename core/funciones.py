@@ -1,3 +1,4 @@
+#-*-coding:utf8;-*-
 from cracker import hmac4times, crack
 from pcapParser import load_savefile
 from halfHandshake import crackClients
@@ -65,6 +66,12 @@ def perm(universo, longitud, inicio=False, fin=False):
     return yield_perm()
 
 def peso(n,r):#usando permutacion con repeticion
+	"""
+	Muestra el peso en bit de un (diccionario) usando permutacion con repeticion n**r 
+	n=todos los elementos que hay ->una lista
+	r=tamaño de elementos a combinar->int
+	Tomando en cuenta los salto de lineas
+	"""
 	espacios=0;cont=0
 	for x in n:
 		cont=cont+1
@@ -74,7 +81,6 @@ def peso(n,r):#usando permutacion con repeticion
 	for x in xrange(1,cantidad):#contando el ultimo salto
 		espacios=espacios+16
 	peso=peso+espacios
-	print "peso -->",peso,"bit"
 
 def crack_WPA_sin_dicc(capFilePath, mac, SSID):
 	passQueue = Queue()
@@ -173,3 +179,57 @@ def success(clave):
 
 def not_found():
 	print "La clave no ha sido encontrada."
+
+#ingresar Datos
+def ingresar():
+	"""
+	Pide al usuario todos los datos a utilizar 
+	saca en orden
+	(universo, longitud, inicio, fin, cola)
+	"""
+	cola=input("ingrese tamaño de buffer en bit->")
+	universo=[]
+	datos=raw_input("datos que quiere que compongan el dicionario->")
+	for x in datos:
+		universo.append(x)
+	longitud=input("longitud que tendra cada permutacion.->")
+	aux=True
+	while(len(inicio)!=longitud) or (aux==True):
+		aux=False
+		inicio=raw_input"ingrese la combinacion inicio->"
+	while (len(fin)!=longitud) or (aux==False):
+		aux=True
+		fin=raw_input"ingrese la combinacion final->"
+	return universo, longitud,inicio,fin,cola
+	#no le e echo salida de otro tipo por que no se que quieres
+
+#Esperar Tamaño Buffer
+
+def buffer(lista):#no es muy eficiente por que si se utiliza en un for por ejemplo entonces comparara una y otra vez para poder obtener lo que quiere
+	"""
+	Va sacando el peso de la lista
+	y comparandolo con el buffer deseado
+	la funcion pide lista a sacar peso para comparar
+	devuelve = valor booleano
+	"""
+	resp=False
+	peso=0
+	aux=ingresar()
+	cola=aux[4]
+	peso=len(lista)*8
+	for x in xrange(1,lista):#contando el ultimo salto
+		peso=peso+16
+	if(cola==peso):
+		resp=True
+	return resp
+
+def escritura(dato):
+	"""
+	recibe un dato tipo = lista
+	lo escribe en C:/Users/Public/diccionario.txt
+	cada vez que ingrese otra lista salta de linea
+	"""
+	aux=open("C:/Users/Public/diccionario.txt","a")
+	#aux.write("\n" ) <--no se si ponerlo por que no se si interfiera con el proceso de utilizarlas posibles claves
+	aux.write(dato)
+	aux.close()
