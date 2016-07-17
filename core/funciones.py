@@ -82,12 +82,12 @@ def peso(n,r):#usando permutacion con repeticion
 		espacios=espacios+16
 	peso=peso+espacios
 
-def crack_WPA_sin_dicc(capFilePath, mac, SSID):
+def crack_WPA_sin_dicc(capFilePath, mac, SSID, universo, longitud, inicio=False, fin=False, bufferSize=1231231):
 	passQueue = Queue()
 	thread = Thread(
 		target=insertar_combinaciones, 
-		args=(passQueue, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 8),
-		kwargs=({"fin" : [0,0,0,0,0,0,1,0]})
+		args=(passQueue, universo, longitud),
+		kwargs=({"inicio": inicio, "fin" : fin, "bufferSize": bufferSize})
 	)
 	thread.start()
 	thread.join()
