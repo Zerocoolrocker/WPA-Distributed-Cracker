@@ -268,7 +268,6 @@ def not_found():
 
 #Esperar Tamaño Buffer
 
-<<<<<<< HEAD
 def buffer(lista):#no es muy eficiente por que si se utiliza en un for por ejemplo entonces comparara una y otra vez para poder obtener lo que quiere
 	"""
 	Va sacando el peso de la lista
@@ -314,33 +313,4 @@ def perm_repet(n,r):#==TOTAL
 #por eso pienso que es mejor hacerlo directemente en "el proceso(funcion)"
 #que quieras saber procesos completados en 10 seg y asi no tendras que modificar nada a este script para
 #que funcione con demas cosas recomiendo usar "clock()" si funciona como queremos
-=======
-# def buffer(lista):#no es muy eficiente por que si se utiliza en un for por ejemplo entonces comparara una y otra vez para poder obtener lo que quiere
-#     """
-#     Va sacando el peso de la lista
-#     y comparandolo con el buffer deseado
-#     la funcion pide lista a sacar peso para comparar
-#     devuelve = valor booleano
-#     """
-#     resp=False
-#     peso=0
-#     aux=ingresar()
-#     cola=aux[4]
-#     peso=len(lista)*8
-#     for x in xrange(1,lista):#contando el ultimo salto
-#         peso=peso+16
-#     if(cola==peso):
-#         resp=True
-#     return resp
 
-# def escritura(dato):
-#     """
-#     recibe un dato tipo = lista
-#     lo escribe en C:/Users/Public/diccionario.txt
-#     cada vez que ingrese otra lista salta de linea
-#     """
-#     aux=open("C:/Users/Public/diccionario.txt","a")
-#     #aux.write("\n" ) <--no se si ponerlo por que no se si interfiera con el proceso de utilizarlas posibles claves
-#     aux.write(dato)
-#     aux.close()
->>>>>>> 5a5b20962269edeca5ff2922ccbb2a14c1a6767a
