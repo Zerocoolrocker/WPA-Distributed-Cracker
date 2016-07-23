@@ -233,3 +233,20 @@ def escritura(dato):
 	#aux.write("\n" ) <--no se si ponerlo por que no se si interfiera con el proceso de utilizarlas posibles claves
 	aux.write(dato)
 	aux.close()
+
+def tiempo(x,total):
+    """
+    pide como datos  tiempo(a,b)
+    donde "x" seria pocesos completados en diez segundos 
+    y "total" total de procesos a completar esto me lo deberia dar una perm con repecion n**r
+    """
+    tiempo=((x//total)*10)/60#o x tiempo si fuera x tiempo entonces tendria que ser una entrada mas..
+    print tiempo ,"minutos"
+
+def perm_repet(n,r):#==TOTAL
+    aux=n**r
+    return aux
+#la funcion de total no la hice por que tube un problema con el control de flujo
+#por eso pienso que es mejor hacerlo directemente en "el proceso(funcion)"
+#que quieras saber procesos completados en 10 seg y asi no tendras que modificar nada a este script para
+#que funcione con demas cosas recomiendo usar "clock()" si funciona como queremos
