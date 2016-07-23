@@ -20,7 +20,7 @@ def crackProcess(ssid, clientMac, APMac, Anonce, Snonce, mic, data, passQueue, f
     pke = "Pairwise key expansion" + '\x00' + min(APMac,clientMac)+max(APMac,clientMac)+min(Anonce,Snonce)+max(Anonce,Snonce)
     count = 0
     timeA = datetime.now()
-    while True:
+    while passQueue.status == "activo":
         passPhrase = passQueue.get()
         pmk = pbkdf2_bin(passPhrase, ssid, 4096, 32)
         ptk = hmac4times(pmk,pke)
@@ -30,31 +30,5 @@ def crackProcess(ssid, clientMac, APMac, Anonce, Snonce, mic, data, passQueue, f
             calculatedMic = hmac.new(ptk[0:16],data).digest()
         if mic == calculatedMic:
             foundPassQ.put(passPhrase)
-
-def crack(ssid, clientMac, APMac, Anonce, Snonce, mic, data, passQueue):
-    foundPassQ = Queue()
-    try:
-        timeA = datetime.now()
-        startSize = passQueue.qsize()
-    except:
-        pass
-    pool = Pool(numOfPs, crackProcess, (ssid, clientMac, APMac, Anonce, Snonce, mic, data, passQueue, foundPassQ))
-    while True:
-        sleep(1)
-        try:
-            timeB = datetime.now()
-            currentSize = passQueue.qsize()
-            print str(100 - 100.0 * currentSize / startSize) + "% done. " + str((startSize - currentSize) / (timeB - timeA).total_seconds()) + " hashes per second"
-        except:
-            pass
-        if foundPassQ.empty():
-            if passQueue.empty():
-                returnVal = False
-                break
-        else:
-            passphrase = foundPassQ.get()
-            returnVal = passphrase
+            passQueue.status = "finalizado"
             break
-    pool.terminate()
-    return returnVal
-
