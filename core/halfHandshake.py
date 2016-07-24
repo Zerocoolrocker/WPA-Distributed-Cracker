@@ -1,5 +1,5 @@
 from pcapParser import load_savefile
-from cracker import crack
+# from cracker import crack
 from multiprocessing import Queue
 
 

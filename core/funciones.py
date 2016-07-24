@@ -1,13 +1,15 @@
 #-*-coding:utf8;-*-
-from cracker import hmac4times, crack, numOfPs, crackProcess
+from cracker import hmac4times, numOfPs, crackProcess
 from pcapParser import load_savefile
 from halfHandshake import crackClients
 from Queue import Queue
+from datetime import datetime
 from sys import getsizeof
 from threading import Thread
 from time import sleep
 import termios, atexit, sys, os, time
 import shell
+
 
 def isWPAPass(passPhrase, ssid, clientMac, APMac, Anonce, Snonce, mic, data):
     pke = "Pairwise key expansion" + '\x00' + min(APMac,clientMac)+max(APMac,clientMac)+min(Anonce,Snonce)+max(Anonce,Snonce)
@@ -85,15 +87,14 @@ def peso(n,r):#usando permutacion con repeticion
         espacios=espacios+16
     peso=peso+espacios
 
-def crack_WPA_sin_dicc(capFilePath, usersMac, SSID, universo, longitud, inicio=False, fin=False, bufferSize=1231231):
+def crack_WPA_sin_dicc(capFilePath, usersMac, SSID, universo, longitud, inicio=False, fin=False, bufferSize=1231231, dataQueue=Queue()):
     global numOfPs
-    passQueue = Queue()
     foundPassQ = Queue()
-    passQueue.status = "activo"
+    dataQueue.status = "activo"
     ingresar_comb_thread = Thread(
         target=insertar_combinaciones, 
-        args=(passQueue, universo, longitud),
-        kwargs=({"inicio": inicio, "fin" : fin, "bufferSize": bufferSize})
+        args=(universo, longitud),
+        kwargs=({"dataQueue": dataQueue, "inicio": inicio, "fin" : fin, "bufferSize": bufferSize})
     )
     ingresar_comb_thread.start()
 
@@ -123,7 +124,7 @@ def crack_WPA_sin_dicc(capFilePath, usersMac, SSID, universo, longitud, inicio=F
                         clientHandshake[1]['Snonce'], 
                         clientHandshake[1]['mic'], 
                         clientHandshake[1]['data'], 
-                        passQueue, 
+                        dataQueue, 
                         foundPassQ
                     )
                 ) 
@@ -134,22 +135,22 @@ def crack_WPA_sin_dicc(capFilePath, usersMac, SSID, universo, longitud, inicio=F
             shell.init_anykey()
             try:
                 while True:
-                    sleep(0.001)
-                    os.system("clear")
-                    print 'crackeando handshake...\npuedes detener el proceso presionando la letra "c" (despues podra ser reanudado)\n'
+                    # sleep(0.001)
+                    # os.system("clear")
+                    # print 'crackeando handshake...\npuedes detener el proceso presionando la letra "c" (despues podra ser reanudado)\n'
                     #TODO: IMPRIMIR AQUI INFORMACION SOBRE EL PROCESO DE CRACKEO
                     key = os.read(sys.stdin.fileno(), 1)
                     if key == 'c':
-                        passQueue.status = "detener"
+                        dataQueue.status = "detener"
                         break
                     if foundPassQ.empty():
-                        if passQueue.status != "activo":
+                        if dataQueue.status != "activo":
                             returnVal = None
-                            print "fin de sesion."
+                            # print "fin de sesion."
                             return
                     else:
                         passphrase = foundPassQ.get()
-                        passQueue.status = "finalizado"
+                        dataQueue.status = "finalizado"
                         return passphrase
 
                 shell.term_anykey()
@@ -158,16 +159,15 @@ def crack_WPA_sin_dicc(capFilePath, usersMac, SSID, universo, longitud, inicio=F
                 raise e
 
 
-
-def insertar_combinaciones(combQueue, universo, longitud, inicio=False, fin=False, bufferSize=1231231):
+def insertar_combinaciones(universo, longitud, inicio=False, fin=False, bufferSize=1231231, dataQueue=Queue()):
     """Inserta las combinaciones de un rango dado en una Queue."""
     for comb in perm(universo, longitud, inicio=inicio, fin=fin):
-        if combQueue.status != "activo":
+        if dataQueue.status != "activo":
             return
-        while getsizeof(combQueue) >= bufferSize:
+        while getsizeof(dataQueue) >= bufferSize:
             pass
-        combQueue.put(comb)
-    combQueue.status = "finalizado"
+        dataQueue.put(comb)
+    dataQueue.status = "finalizado"
 
 def extraer_cap_info(readFile):
     try:
@@ -297,20 +297,18 @@ def escritura(dato):
 	aux.write(dato)
 	aux.close()
 
-def tiempo(x,total):
-    """
-    pide como datos  tiempo(a,b)
-    donde "x" seria pocesos completados en diez segundos 
-    y "total" total de procesos a completar esto me lo deberia dar una perm con repecion n**r
-    """
-    tiempo=((x//total)*10)/60#o x tiempo si fuera x tiempo entonces tendria que ser una entrada mas..
-    print tiempo ,"minutos"
 
-def perm_repet(n,r):#==TOTAL
-    aux=n**r
-    return aux
-#la funcion de total no la hice por que tube un problema con el control de flujo
-#por eso pienso que es mejor hacerlo directemente en "el proceso(funcion)"
-#que quieras saber procesos completados en 10 seg y asi no tendras que modificar nada a este script para
-#que funcione con demas cosas recomiendo usar "clock()" si funciona como queremos
-
+def tiempo_proceso(funcion, cantidad_datos, longitud_datos, *test_args, **test_kwargs):
+    """Calcula tiempo aproximado en segundos que tardara aplicar un mismo proceso a una cantidad de datos de entrada de la misma longitud."""
+    dataQueue = Queue()
+    number_test_data = 100
+    generador = perm(range(10), longitud_datos)
+    for cn in range(number_test_data):
+        dataQueue.put(generador.next())
+    test_kwargs["dataQueue"] = dataQueue
+    tiempo_inicio = datetime.now()
+    funcion(*test_args, **test_kwargs)
+    tiempo_fin = datetime.now()
+    tiempo_transcurrido = (tiempo_fin - tiempo_inicio).total_seconds()
+    tiempo_total = (tiempo_transcurrido * cantidad_datos) / number_test_data
+    return tiempo_total
