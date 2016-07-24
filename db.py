@@ -5,18 +5,18 @@ def connect_db():
 
 def create_tables(cursor):
 	querys = [
-		"""CREATE TABLE IF NOT EXISTS usuario(
+		"""CREATE TABLE IF NOT EXISTS usuarios(
 			id INTEGER PRIMARY KEY,
 			nombre VARCHAR(20)
 		)""",
-		"""CREATE TABLE IF NOT EXISTS procesador(
+		"""CREATE TABLE IF NOT EXISTS procesadores(
 			id INTEGER PRIMARY KEY,
 			modelo VARCHAR(100),
 			frecuencia REAL,
 			cantidad_nucleos INTEGER	
 
 		)""",
-		"""CREATE TABLE IF NOT EXISTS maquina(
+		"""CREATE TABLE IF NOT EXISTS maquinas(
 			id INTEGER PRIMARY KEY,
 			usuario_id INTEGER,
 			procesador_id INTEGER,
@@ -24,7 +24,7 @@ def create_tables(cursor):
 			FOREIGN KEY(usuario_id) REFERENCES usuario(id),
 			FOREIGN KEY(procesador_id) REFERENCES procesador(id)
 		)""",
-		"""CREATE TABLE IF NOT EXISTS sesion(
+		"""CREATE TABLE IF NOT EXISTS sesiones(
 			id INTEGER PRIMARY KEY,
 			maquina_id INTEGER,
 			fecha_inicio TIMESTAMP,
@@ -32,7 +32,7 @@ def create_tables(cursor):
 			status VARCHAR(10),
 			FOREIGN KEY(maquina_id) REFERENCES maquina(id)
 		)""",
-		"""CREATE TABLE IF NOT EXISTS detalles_rango(
+		"""CREATE TABLE IF NOT EXISTS detalles_rangos(
 			id INTEGER PRIMARY KEY,
 			universo VARCHAR,
 			longitud_combinaciones INTEGER,
