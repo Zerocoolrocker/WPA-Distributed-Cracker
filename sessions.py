@@ -2,6 +2,7 @@ import db, utils, pwd, os, platform
 import cpuinfo
 from datetime import datetime
 from settings import USUARIO
+from psutil import virtual_memory
 
 def host_info():
 	username = USUARIO or pwd.getpwuid(os.getuid())[0]
@@ -14,12 +15,7 @@ def host_info():
 		cpu_id = db.cursor.execute("INSERT INTO procesadores(modelo, cantidad_nucleos) VALUES(?,?)", (cpu_model, cores)).lastrowid
 		machine_id = db.cursor.execute(
 			"INSERT INTO maquinas(usuario_id, procesador_id, memoria_ram, os) VALUES(?,?,?,?)", 
-			(
-				user_id,
-				cpu_id,
-				utils.get_ram(),
-				platform.platform()
-			)
+			(user_id, cpu_id, virtual_memory().total, platform.platform())
 		).lastrowid
 		db.cursor.execute("INSERT INTO maquina_anfitrion(maquina_id) VALUES(?)", (machine_id,))
 		maq_anf = db.cursor.execute("select maquina_id from maquina_anfitrion").fetchone()
